@@ -41,6 +41,8 @@ class PlecsGUI(tk.Tk):
             mul = 1
         else:
             mul = kwargs['multiplier']
+        if 'loop' not in kwargs:
+            kwargs['loop'] = False
             
         self.menu.append( 
             Block(self,self.controller,
@@ -49,7 +51,8 @@ class PlecsGUI(tk.Tk):
                                 value = kwargs['value'],
                                 steps = kwargs['steps'], 
                                 limits = kwargs['limits'],
-                                param=kwargs['param']
+                                param=kwargs['param'],
+                                loop=kwargs['loop']
                      ) 
             )
         
@@ -66,19 +69,21 @@ class PlecsGUI(tk.Tk):
         self.params = []            
         self.limits = []
         self.muls = []
+        self.loops = []
         i = 0
         for col in range(1,n_cols+1):
             for row in range(n_rows):
                 try:
                     self.menu[i].grid(column=col,row=row)
-                    self.params.append(self.menu[i].args['param'])
+                    self.params.append(self.menu[i].args['param']+'.'+self.menu[i].args['title'])
                     self.limits.append(self.menu[i].args['limits'])
                     self.muls.append(self.menu[i].args['multiplier'])
+                    self.loops.append(self.menu[i].args['loop'])
                 except IndexError:
                     print('Index error for menu')
                 i += 1
         print(self.params)
-        self.loop = LoopSim(self,self.controller,self.params,self.limits,self.muls)
+        self.loop = LoopSim(self,self.controller,self.params,self.limits,self.muls,self.loops)
         self.loop.grid(column=0,row=1)
         self.geometry(f"{self.size['x']}x{int(self.size['y']+i/10)}")
         
@@ -179,7 +184,7 @@ class Opener(ttk.Frame):
                 
                 # update the current command with the new value
                 if input_string == command:
-                    command += f"\n{WhatToChange} = {values[i]}*{self.args['multiplier']};"
+                    command += f"\n{WhatToChange} = {values[i]};"#"*{self.args['multiplier']};"
                 self.plecs.set(self.model,'InitializationCommands',command)
                 self.plecs.simulate(self.model)
                 
@@ -224,13 +229,14 @@ class Opener(ttk.Frame):
         self.frame_entry.insert(0,f"{self.file}")
         
 class LoopSim(ttk.Frame):
-    def __init__(self,parent,controller,params,limits,mul):
+    def __init__(self,parent,controller,params,limits,mul,loops):
     # create a block with RadioButtons which determine
     # the loop-simulation
         super().__init__(parent)
         self.params = params
         self.mul = mul
         self.limits = limits
+        self.loops = loops
         print(self.limits)
         for i, limit in enumerate(self.limits):
             self.limits[i] = [val*self.mul[i] for val in limit]
@@ -262,11 +268,13 @@ class LoopSim(ttk.Frame):
         button_dn = ttk.Button(action_frame,text='<',width=9,command=self.decrease)
         self.choice = []
         self.dict_params = {}
-        self.var = tk.StringVar(value=self.params[0])  # Set default value to "Option 1"
+        self.var = tk.StringVar(value=self.params[0].split('.')[0])  # Set default value to "Option 1"
+        print(self.params[0].split('.')[0] + " = " + self.params[0].split('.')[1])
         for i in range(len(self.params)):
-            self.choice.append( tk.Radiobutton(action_frame, variable=self.var, text=self.params[i], value=self.params[i],command=self.set_choice) )
-            self.dict_params[self.params[i]] = self.limits[i]
-            self.dict_params[self.params[i]] = self.limits[i]
+            if self.loops[i] == True:
+                self.choice.append( tk.Radiobutton(action_frame, variable=self.var, text=self.params[i].split('.')[1], value=self.params[i].split('.')[0],command=self.set_choice) )
+                self.dict_params[self.params[i].split('.')[0]] = self.limits[i]
+                self.dict_params[self.params[i].split('.')[0]] = self.limits[i]
         self.controller.set_dict(self.dict_params)
         main_frame.pack()
         title_frame.pack(fill='x')
@@ -275,7 +283,8 @@ class LoopSim(ttk.Frame):
         action_frame.pack(fill='x')
         self.frame_entry.pack(fill='x')
         for i in range(len(self.params)):
-            self.choice[i].pack(side=tk.BOTTOM)
+            if self.loops[i] == True:
+                self.choice[i].pack(side=tk.BOTTOM)
             
         button_dn.pack(side=tk.LEFT)
         button_up.pack(side=tk.LEFT)
@@ -418,3 +427,4 @@ class Block(ttk.Frame):
         except ValueError:
             self.frame_entry.insert(0,current_value)
             print('ValueError')
+            
