@@ -1,3 +1,15 @@
+from scipy.interpolate import interp1d, UnivariateSpline
+import subprocess
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import xmlrpc.client as xml
+import os
+import tkinter as tk
+from tkinter import ttk
+from tkinter import filedialog
+import re
+
 class PlecsGUI(tk.Tk):
     def __init__(self,title):
         ''' title = "The title of your GUI window, the next two commands one needs to use are: 
